@@ -5,7 +5,7 @@
 #include <cmath>
 #include "options_parser.h"
 #include "methods.h"
-#include "result.h"
+#include "integration_structures.h"
 
 //#define PRINT_STEPS
 
@@ -20,26 +20,26 @@ double deDjongFunc(double x1, double x2) {
 }
 
 double
-calculatePartIntegral(double beginX, double endX, double beginY, double endY, int splitsNum, bool calcFirstTime) {
+calculatePartIntegral(double beginX, double endX, double beginY, double endY, int splitsNumX, int splitsNumY, bool calcFirstTime) {
     int jStartValue = 0, jIncrement = 1;
     if (!calcFirstTime) {
         jStartValue = 1;
         jIncrement = 2;
     }
-    double deltaX = (endX - beginX) / splitsNum,
-            deltaY = (endY - beginY) / splitsNum;
+    double deltaX = (endX - beginX) / splitsNumX,
+            deltaY = (endY - beginY) / splitsNumY;
     double deltaS = deltaX * deltaY;
     double funcValuesSum = 0;
-    for (int i = 0; i < splitsNum; i += 2) {
+    for (int i = 0; i < splitsNumX; i += 2) {
         double curX = beginX + deltaX * i;
-        for (int j = jStartValue; j < splitsNum; j += jIncrement) {
+        for (int j = jStartValue; j < splitsNumY; j += jIncrement) {
             double curY = beginY + deltaY * j;
             funcValuesSum += deDjongFunc(curX, curY);
         }
     }
-    for (int i = 1; i < splitsNum; i += 2) {
+    for (int i = 1; i < splitsNumX; i += 2) {
         double curX = beginX + deltaX * i;
-        for (int j = 0; j < splitsNum; ++j) {
+        for (int j = 0; j < splitsNumY; ++j) {
             double curY = beginY + deltaY * j;
             funcValuesSum += deDjongFunc(curX, curY);
         }
@@ -48,24 +48,23 @@ calculatePartIntegral(double beginX, double endX, double beginY, double endY, in
     return integralValue;
 }
 
-IntegrationResult calculateIntegral(double beginX, double endX, double beginY, double endY) {
-    int splitsNum = 200;
+IntegrationResult calculateIntegral(double beginX, double endX, double beginY, double endY, int splitsNumX, int splitsNumY) {
     double absEps = 0.000005, relEps = 0.02;
     double absError = 99999, relError = 99999;
 
-    double previousIntegralVal = calculatePartIntegral(beginX, endX, beginY, endY, splitsNum, true),
+    double previousIntegralVal = calculatePartIntegral(beginX, endX, beginY, endY, splitsNumX, splitsNumY, true),
             newIntegralVal = 0;
 
     while (absError > absEps and relError > relEps) {
-        splitsNum *= 2;
+        splitsNumX *= 2, splitsNumY *= 2;
 
         newIntegralVal = previousIntegralVal / 4 +
-                         calculatePartIntegral(beginX, endX, beginY, endY, splitsNum, false);
+                         calculatePartIntegral(beginX, endX, beginY, endY, splitsNumX, splitsNumY, false);
 
         absError = std::abs(newIntegralVal - previousIntegralVal);
         relError = std::abs(newIntegralVal - previousIntegralVal) / newIntegralVal;
 #ifdef PRINT_STEPS
-        std::cout << "splits num: " << splitsNum << '\n'
+        std::cout << "splits num: " << splitsNumX << " | " << splitsNumY << '\n'
                   << "abs error: " << absError << '\n'
                   << "rel error: " << relError << '\n'
                   << "------------------------" << std::endl;
@@ -78,10 +77,11 @@ IntegrationResult calculateIntegral(double beginX, double endX, double beginY, d
 
 int main(int argc, char *argv[]) {
     double beginX = -50, endX = 50, beginY = -50, endY = 50;
+    int splitsNumX = 200, splitsNumY = 200;
 
     auto time_start = get_current_time_fenced();
 
-    IntegrationResult integrationResult = calculateIntegral(beginX, endX, beginY, endY);
+    IntegrationResult integrationResult = calculateIntegral(beginX, endX, beginY, endY, splitsNumX, splitsNumY);
 
     auto time_finish = get_current_time_fenced();
 

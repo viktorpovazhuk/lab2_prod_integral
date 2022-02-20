@@ -56,7 +56,7 @@ include(cmake/CompilerWarnings.cmake)
 ##########################################################
 
 #! Project main executable source compilation
-add_executable(${PROJECT_NAME} main.cpp
+add_executable(${PROJECT_NAME} src/serial.cpp
 				options_parser/options_parser.cpp options_parser/options_parser.h)
 
 #! Put path to your project headers

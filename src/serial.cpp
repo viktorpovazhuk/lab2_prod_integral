@@ -2,10 +2,12 @@
 // PVS-Studio Static Code Analyzer for C, C++, C#, and Java: http://www.viva64.com
 
 #include <iostream>
-#include <thread>
-#include <vector>
 #include <cmath>
 #include "options_parser.h"
+#include "methods.h"
+#include "result.h"
+
+//#define PRINT_STEPS
 
 double deDjongFunc(double x1, double x2) {
     double sum = 0.002;
@@ -46,34 +48,65 @@ calculatePartIntegral(double beginX, double endX, double beginY, double endY, in
     return integralValue;
 }
 
-double calculateIntegral(double beginX, double endX, double beginY, double endY) {
-    int splitsNum = 2000;
+IntegrationResult calculateIntegral(double beginX, double endX, double beginY, double endY) {
+    int splitsNum = 200;
     double absEps = 0.000005, relEps = 0.02;
+    double absError = 99999, relError = 99999;
+
     double previousIntegralVal = calculatePartIntegral(beginX, endX, beginY, endY, splitsNum, true),
             newIntegralVal = 0;
-    double absError = 99999, relError = 99999;
-    while (absError > absEps or relError > relEps) {
+
+    while (absError > absEps and relError > relEps) {
         splitsNum *= 2;
+
         newIntegralVal = previousIntegralVal / 4 +
                          calculatePartIntegral(beginX, endX, beginY, endY, splitsNum, false);
+
         absError = std::abs(newIntegralVal - previousIntegralVal);
         relError = std::abs(newIntegralVal - previousIntegralVal) / newIntegralVal;
-
+#ifdef PRINT_STEPS
         std::cout << "splits num: " << splitsNum << '\n'
                   << "abs error: " << absError << '\n'
-                  << "rel error: " << relError << std::endl;
+                  << "rel error: " << relError << '\n'
+                  << "------------------------" << std::endl;
+#endif
         previousIntegralVal = newIntegralVal;
     }
-    return newIntegralVal;
+
+    return IntegrationResult{newIntegralVal, absError, relError};
 }
 
 int main(int argc, char *argv[]) {
     double beginX = -50, endX = 50, beginY = -50, endY = 50;
-//    int threadsNum = 6;
-//    double partX = (endX - beginX) / threadsNum;
-//    std::vector<std::thread> threads;
-    double integralValue = calculateIntegral(beginX, endX, beginY, endY);
+
+    auto time_start = get_current_time_fenced();
+
+    IntegrationResult integrationResult = calculateIntegral(beginX, endX, beginY, endY);
+
+    auto time_finish = get_current_time_fenced();
+
     std::cout.precision(9);
-    std::cout << std::fixed << integralValue;
+#ifdef PRINT_STEPS
+    std::cout << "variant: ";
+#endif
+    std::cout << 1 << std::endl;
+#ifdef PRINT_STEPS
+    std::cout << "integral: ";
+#endif
+    std::cout << integrationResult.integralValue << std::endl;
+#ifdef PRINT_STEPS
+    std::cout << "abs error: ";
+#endif
+    std::cout << integrationResult.absError << std::endl;
+#ifdef PRINT_STEPS
+    std::cout << "rel error: ";
+#endif
+    std::cout << integrationResult.relError << std::endl;
+#ifdef PRINT_STEPS
+    std::cout << "time: ";
+#endif
+    std::cout << to_us(time_finish - time_start) << std::endl;
+
+
     return 0;
 }

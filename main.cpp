@@ -17,7 +17,7 @@ double de_djong_func(double x1, double x2) {
     return pow(sum, -1);
 }
 
-double calculate_integral(double beginX, double endX, double beginY, double endY, int splitsNum) {
+void calculate_integral(double beginX, double endX, double beginY, double endY, int splitsNum, double &result) {
     double deltaX = (endX - beginX) / splitsNum,
             deltaY = (endY - beginY) / splitsNum;
     double deltaS = deltaX * deltaY;
@@ -32,25 +32,19 @@ double calculate_integral(double beginX, double endX, double beginY, double endY
     }
 
     double integralValue = funcValuesSum * deltaS;
-    return integralValue;
+    result = integralValue;
 }
 
 
-void fn1() {
+void fn1(int threadNumber) {
     for (int i = 0; i < 100000; ++i) {
-        std::cout << "fn1" << i <<  std::endl;
+        std::cout << "fn-" << threadNumber << " :"<< i <<  std::endl;
     }
 }
 
-void fn2() {
-    for (int i = 0; i < 100000; ++i) {
-        std::cout << "fn2" << i <<  std::endl;
-    }
-}
-
-int main(int argc, char *argv[]) {
-//    double beginX = -50, endX = 50, beginY = -50, endY = 50;
-//    int splitsNum = 2000;
+int main(int argc, char *argv[]) {    // Create a vector of threads
+    double beginX = -50, endX = 50, beginY = -50, endY = 50;
+    int splitsNum = 1000;
 //    int threadsNum = 6;
 //    double partX = (endX - beginX) / threadsNum;
 //    std::vector<std::thread> threads;
@@ -58,6 +52,36 @@ int main(int argc, char *argv[]) {
 //    std::cout << integralValue;
 
 
+    int threadsNum = 2;
+    std::vector<std::thread> threads(threadsNum);
+    std::vector<double> partialVolume(threadsNum);
+
+    double volumePart1;
+    double volumePart2;
+
+
+
+    std::thread thread1 = std::thread(calculate_integral, -50, 0, -50, 50, splitsNum, std::ref(volumePart1));
+    std::thread thread2 = std::thread(calculate_integral, 0, 50, -50, 50, splitsNum, std::ref(volumePart2));
+
+    thread1.join();
+    thread2.join();
+
+
+
+//    for (int i = 0; i < threadsNum; i++) {
+//        threads[i] = std::thread(calculate_integral, beginX, endX, beginY, endY, splitsNum, std::ref(partialVolume[i]));
+//    }
+
+//    for (std::thread & th : threads)
+//    {
+//        // If thread Object is Joinable then Join that thread.
+//        if (th.joinable())
+//            th.join();
+//    }
+
+    std::cout << volumePart1 << std::endl;
+    std::cout << volumePart2 << std::endl;
 
     return 0;
 }

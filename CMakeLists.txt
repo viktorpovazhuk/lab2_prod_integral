@@ -8,6 +8,7 @@ set(PROJECT_NAME integrate_task_1)
 project(${PROJECT_NAME} C CXX) # project(${PROJECT_NAME} C CXX ASM)
 
 set(CMAKE_CXX_STANDARD 17)
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
 
 ##########################################################
 # User configurable options of the template

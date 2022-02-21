@@ -17,4 +17,9 @@ struct IntegrationParameters {
     double absEps, relEps;
 };
 
+struct PartIntegrationParameters {
+    double beginX, endX, beginY, endY;
+    int splitsNumX, splitsNumY;
+};
+
 #endif //INTEGRATE_TASK_1_INTEGRATION_STRUCTURES_H

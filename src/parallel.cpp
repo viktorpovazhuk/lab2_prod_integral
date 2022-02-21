@@ -8,8 +8,11 @@
 #include "options_parser.h"
 #include "methods.h"
 #include "integration_structures.h"
+#include <algorithm>
 
 //#define PRINT_STEPS
+
+using std::vector;
 
 double deDjongFunc(double x1, double x2) {
     double sum = 0.002;
@@ -22,13 +25,13 @@ double deDjongFunc(double x1, double x2) {
 }
 
 void
-calculatePartIntegral(IntegrationParameters integrationParameters, bool calcFirstTime, double &result) {
-    double& beginX = integrationParameters.beginX,
-    endX = integrationParameters.endX,
-    beginY = integrationParameters.beginY,
-    endY = integrationParameters.endY;
-    int& splitsNumX = integrationParameters.splitsNumX,
-    splitsNumY = integrationParameters.splitsNumY;
+calculatePartIntegral(PartIntegrationParameters partIntegrationParameters, bool calcFirstTime, double &result) {
+    double beginX = partIntegrationParameters.beginX,
+    endX = partIntegrationParameters.endX,
+    beginY = partIntegrationParameters.beginY,
+    endY = partIntegrationParameters.endY;
+    int splitsNumX = partIntegrationParameters.splitsNumX,
+    splitsNumY = partIntegrationParameters.splitsNumY;
 
     int jStartValue = 0, jIncrement = 1;
     if (!calcFirstTime) {
@@ -59,12 +62,21 @@ calculatePartIntegral(IntegrationParameters integrationParameters, bool calcFirs
     result = integralValue;
 }
 
-double calculateOnceIntegral(IntegrationParameters integrationParameters, bool calcFirstTime, int threadsNum) {
+
+double calculateOnceIntegral(IntegrationParameters integrationParameters, bool calcFirstTime, int threadsNum, vector<int>& threadsSplitsNum) {
     // threads
-    //    double partX = (endX - beginX) / threadsNum;
-//    std::vector<std::thread> threads;
-//    double integralValue = calculate_integral(beginX, endX, beginY, endY, splitsNum);
-//    std::cout << integralValue;
+
+    double partX = (integrationParameters.endX - integrationParameters.beginX) / threadsNum;
+
+    // send to calculatePartIntegral
+    PartIntegrationParameters partIntegrationParameters{
+            integrationParameters.beginX,
+            integrationParameters.beginX + partX,
+            integrationParameters.beginY,
+            integrationParameters.endY,
+            threadsSplitsNum[0],
+            integrationParameters.splitsNumY
+    };
 
     std::vector<std::thread> threads(threadsNum);
     std::vector<double> partialVolume(threadsNum);
@@ -98,6 +110,7 @@ double calculateOnceIntegral(IntegrationParameters integrationParameters, bool c
 
 //    std::cout << volumePart1 << std::endl;
 //    std::cout << volumePart2 << std::endl;
+
     // end threads
 
     double integralVal = volumePart1 + volumePart2;
@@ -105,18 +118,32 @@ double calculateOnceIntegral(IntegrationParameters integrationParameters, bool c
     return integralVal;
 }
 
+vector<int> calculateThreadsSplitsNum(int splitsNum, int threadsNum) {
+    vector<int> threadsSplitsNum(threadsNum);
+    int eachValue = splitsNum / threadsNum;
+    int remain = splitsNum % threadsNum;
+    std::fill(threadsSplitsNum.begin(), threadsSplitsNum.begin() + remain, eachValue + 1);
+    std::fill(threadsSplitsNum.begin() + remain, threadsSplitsNum.end(), eachValue);
+    return threadsSplitsNum;
+}
+
 IntegrationResult calculatePreciseIntegral(IntegrationParameters integrationParameters, int threadsNum) {
+    vector<int> threadsSplitsNum = calculateThreadsSplitsNum(integrationParameters.splitsNumX, threadsNum);
+
     bool calcFirstTime = true;
-    double previousIntegralVal = calculateOnceIntegral(integrationParameters, calcFirstTime, threadsNum),
+    double previousIntegralVal = calculateOnceIntegral(integrationParameters, calcFirstTime, threadsNum, threadsSplitsNum),
             newIntegralVal = 0;
     calcFirstTime = false;
 
     double absError = 99999, relError = 99999;
     while (absError > integrationParameters.absEps and relError > integrationParameters.relEps) {
-        integrationParameters.splitsNumX *= 2, integrationParameters.splitsNumY *= 2;
+        for (auto& threadSplitsNum: threadsSplitsNum) {
+            threadSplitsNum *= 2;
+        }
+        integrationParameters.splitsNumY *= 2;
 
         newIntegralVal = previousIntegralVal / 4 +
-                calculateOnceIntegral(integrationParameters, calcFirstTime, threadsNum);
+                calculateOnceIntegral(integrationParameters, calcFirstTime, threadsNum, threadsSplitsNum);
 
         absError = std::abs(newIntegralVal - previousIntegralVal);
         relError = std::abs(newIntegralVal - previousIntegralVal) / newIntegralVal;

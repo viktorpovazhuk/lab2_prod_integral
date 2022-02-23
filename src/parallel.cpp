@@ -9,10 +9,13 @@
 #include "methods.h"
 #include "integration_structures.h"
 #include <algorithm>
+#include <memory>
 
 #define PRINT_STEPS
 
 using std::vector;
+using std::cout;
+using std::endl;
 
 double deDjongFunc(double x1, double x2) {
     double sum = 0.002;
@@ -63,8 +66,7 @@ calculatePartIntegral(PartIntegrationParameters partIntegrationParameters, bool 
 }
 
 
-double calculateOnceIntegral(IntegrationParameters integrationParameters, bool calcFirstTime, int threadsNum, vector<int>& threadsSplitsNum) {
-    // threads
+double calculateOnceIntegral(IntegrationParameters integrationParameters, bool calcFirstTime, int threadsNum, const vector<int>& threadsSplitsNum) {
     std::vector<std::thread> threads(threadsNum);
     std::vector<double> partIntegralResults(threadsNum);
 
@@ -85,19 +87,23 @@ double calculateOnceIntegral(IntegrationParameters integrationParameters, bool c
         integrationParametersThread.beginX = partIntegrationParameters.beginX + partX * i;
         integrationParametersThread.endX = partIntegrationParameters.beginX + partX * (i + 1);
         integrationParametersThread.splitsNumX = threadsSplitsNum[i];
+#ifdef PRINT_STEPS
         std::cout << "beginX | endX -> " << integrationParametersThread.beginX <<  " | " << integrationParametersThread.endX << std::endl;
         std::cout << "splitsNumX for this part -> " << integrationParametersThread.splitsNumX << std::endl;
+
+#endif
         threads[i] = std::thread(calculatePartIntegral, integrationParametersThread, calcFirstTime, std::ref(partIntegralResults[i]));
     }
+#ifdef PRINT_STEPS
+    cout << "------------------------" << std::endl;
+#endif
 
     for (std::thread & th : threads)
     {
-        // If thread Object is Joinable then Join that thread.
         if (th.joinable())
             th.join();
     }
 
-    // Sum up part integrals
     double integralVal = 0;
     for (const auto &n : partIntegralResults)
         integralVal += n;
@@ -127,7 +133,7 @@ IntegrationResult calculatePreciseIntegral(IntegrationParameters integrationPara
         for (auto& threadSplitsNum: threadsSplitsNum) {
             threadSplitsNum *= 2;
         }
-        integrationParameters.splitsNumX *= 2; // for cout only?
+        integrationParameters.splitsNumY *= 2;
 
         newIntegralVal = previousIntegralVal / 4 +
                 calculateOnceIntegral(integrationParameters, calcFirstTime, threadsNum, threadsSplitsNum);
@@ -135,7 +141,7 @@ IntegrationResult calculatePreciseIntegral(IntegrationParameters integrationPara
         absError = std::abs(newIntegralVal - previousIntegralVal);
         relError = std::abs(newIntegralVal - previousIntegralVal) / newIntegralVal;
 #ifdef PRINT_STEPS
-        std::cout << "splits num: " << integrationParameters.splitsNumX << " | " << integrationParameters.splitsNumY << '\n'
+        std::cout << "splits num: " << (integrationParameters.splitsNumX *= 2) << " | " << integrationParameters.splitsNumY << '\n'
                   << "abs error: " << absError << '\n'
                   << "rel error: " << relError << '\n'
                   << "------------------------" << std::endl;
@@ -146,19 +152,29 @@ IntegrationResult calculatePreciseIntegral(IntegrationParameters integrationPara
     return IntegrationResult{newIntegralVal, absError, relError};
 }
 
-void fn1(int threadNumber) {
-    for (int i = 0; i < 100000; ++i) {
-        std::cout << "fn-" << threadNumber << " :"<< i <<  std::endl;
-    }
-}
-
 int main(int argc, char *argv[]) {
-    double beginX = -50, endX = 50, beginY = -50, endY = 50;
-    int splitsNumX = 2, splitsNumY = 100;
-    double absEps = 0.05, relEps = 0.0000002;
-    int threadsNum = 1;
+    std::unique_ptr<command_line_options_t> command_line_options;
+    try {
+        command_line_options = std::make_unique<command_line_options_t>(argc, argv);
+    }
+    catch (std::exception &ex) {
+        cout << ex.what() << endl;
+        return 1;
+    }
 
-    IntegrationParameters integrationParameters{beginX, endX, beginY, endY, splitsNumX, splitsNumY, absEps, relEps};
+    IntegrationParameters integrationParameters{
+        command_line_options->x_start,
+        command_line_options->x_end,
+        command_line_options->y_start,
+        command_line_options->y_end,
+        command_line_options->init_steps_x,
+        command_line_options->init_steps_y,
+        command_line_options->abs_err,
+        command_line_options->rel_err
+    };
+    int threadsNum = command_line_options->n_threads;
+
+    cout << threadsNum << endl;
 
     auto time_start = get_current_time_fenced();
 

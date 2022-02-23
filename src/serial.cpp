@@ -49,7 +49,7 @@ calculatePartIntegral(double beginX, double endX, double beginY, double endY, in
 }
 
 IntegrationResult calculateIntegral(double beginX, double endX, double beginY, double endY, int splitsNumX, int splitsNumY) {
-    double absEps = 0.000005, relEps = 0.02;
+    double absEps = 0.05, relEps = 0.0000002;
     double absError = 99999, relError = 99999;
 
     double previousIntegralVal = calculatePartIntegral(beginX, endX, beginY, endY, splitsNumX, splitsNumY, true),
@@ -77,7 +77,7 @@ IntegrationResult calculateIntegral(double beginX, double endX, double beginY, d
 
 int main(int argc, char *argv[]) {
     double beginX = -50, endX = 50, beginY = -50, endY = 50;
-    int splitsNumX = 200, splitsNumY = 200;
+    int splitsNumX = 2, splitsNumY = 100;
 
     auto time_start = get_current_time_fenced();
 

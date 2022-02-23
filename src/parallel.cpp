@@ -10,7 +10,7 @@
 #include "integration_structures.h"
 #include <algorithm>
 
-//#define PRINT_STEPS
+#define PRINT_STEPS
 
 using std::vector;
 
@@ -65,55 +65,42 @@ calculatePartIntegral(PartIntegrationParameters partIntegrationParameters, bool 
 
 double calculateOnceIntegral(IntegrationParameters integrationParameters, bool calcFirstTime, int threadsNum, vector<int>& threadsSplitsNum) {
     // threads
+    std::vector<std::thread> threads(threadsNum);
+    std::vector<double> partIntegralResults(threadsNum);
 
     double partX = (integrationParameters.endX - integrationParameters.beginX) / threadsNum;
 
-    // send to calculatePartIntegral
+    // initial state of structure
     PartIntegrationParameters partIntegrationParameters{
             integrationParameters.beginX,
-            integrationParameters.beginX + partX,
+            integrationParameters.endX,
             integrationParameters.beginY,
             integrationParameters.endY,
             threadsSplitsNum[0],
             integrationParameters.splitsNumY
     };
 
-    std::vector<std::thread> threads(threadsNum);
-    std::vector<double> partialVolume(threadsNum);
+    for (int i = 0; i < threadsNum; i++) {
+        PartIntegrationParameters integrationParametersThread = partIntegrationParameters;
+        integrationParametersThread.beginX = partIntegrationParameters.beginX + partX * i;
+        integrationParametersThread.endX = partIntegrationParameters.beginX + partX * (i + 1);
+        integrationParametersThread.splitsNumX = threadsSplitsNum[i];
+        std::cout << "beginX | endX -> " << integrationParametersThread.beginX <<  " | " << integrationParametersThread.endX << std::endl;
+        std::cout << "splitsNumX for this part -> " << integrationParametersThread.splitsNumX << std::endl;
+        threads[i] = std::thread(calculatePartIntegral, integrationParametersThread, calcFirstTime, std::ref(partIntegralResults[i]));
+    }
 
-    double volumePart1 = 0, volumePart2 = 0;
-    IntegrationParameters integrationParameters1 = integrationParameters;
-    integrationParameters1.beginX = -50;
-    integrationParameters1.endX = 0;
-    IntegrationParameters integrationParameters2 = integrationParameters;
-    integrationParameters2.beginX = 0;
-    integrationParameters2.endX = 50;
+    for (std::thread & th : threads)
+    {
+        // If thread Object is Joinable then Join that thread.
+        if (th.joinable())
+            th.join();
+    }
 
-    std::thread thread1 = std::thread(calculatePartIntegral, integrationParameters1, calcFirstTime, std::ref(volumePart1));
-    std::thread thread2 = std::thread(calculatePartIntegral, integrationParameters2, calcFirstTime, std::ref(volumePart2));
-
-    thread1.join();
-    thread2.join();
-
-
-
-//    for (int i = 0; i < threadsNum; i++) {
-//        threads[i] = std::thread(calculate_integral, beginX, endX, beginY, endY, splitsNum, std::ref(partialVolume[i]));
-//    }
-
-//    for (std::thread & th : threads)
-//    {
-//        // If thread Object is Joinable then Join that thread.
-//        if (th.joinable())
-//            th.join();
-//    }
-
-//    std::cout << volumePart1 << std::endl;
-//    std::cout << volumePart2 << std::endl;
-
-    // end threads
-
-    double integralVal = volumePart1 + volumePart2;
+    // Sum up part integrals
+    double integralVal = 0;
+    for (const auto &n : partIntegralResults)
+        integralVal += n;
 
     return integralVal;
 }
@@ -140,7 +127,7 @@ IntegrationResult calculatePreciseIntegral(IntegrationParameters integrationPara
         for (auto& threadSplitsNum: threadsSplitsNum) {
             threadSplitsNum *= 2;
         }
-        integrationParameters.splitsNumY *= 2;
+        integrationParameters.splitsNumX *= 2; // for cout only?
 
         newIntegralVal = previousIntegralVal / 4 +
                 calculateOnceIntegral(integrationParameters, calcFirstTime, threadsNum, threadsSplitsNum);
@@ -167,9 +154,9 @@ void fn1(int threadNumber) {
 
 int main(int argc, char *argv[]) {
     double beginX = -50, endX = 50, beginY = -50, endY = 50;
-    int splitsNumX = 200, splitsNumY = 200;
-    double absEps = 0.000005, relEps = 0.02;
-    int threadsNum = 2;
+    int splitsNumX = 2, splitsNumY = 100;
+    double absEps = 0.05, relEps = 0.0000002;
+    int threadsNum = 1;
 
     IntegrationParameters integrationParameters{beginX, endX, beginY, endY, splitsNumX, splitsNumY, absEps, relEps};
 

@@ -65,13 +65,14 @@ calculatePartIntegral(PartIntegrationParameters partIntegrationParameters, bool 
 
 double calculateOnceIntegral(IntegrationParameters integrationParameters, bool calcFirstTime, int threadsNum, vector<int>& threadsSplitsNum) {
     // threads
+    std::vector<std::thread> threads(threadsNum);
+    std::vector<double> partIntegralResults(threadsNum);
 
     double partX = (integrationParameters.endX - integrationParameters.beginX) / threadsNum;
 
-    // send to calculatePartIntegral
+    // initial state of structure
     PartIntegrationParameters partIntegrationParameters{
             integrationParameters.beginX,
-//            integrationParameters.beginX + partX,
             integrationParameters.endX,
             integrationParameters.beginY,
             integrationParameters.endY,
@@ -79,41 +80,27 @@ double calculateOnceIntegral(IntegrationParameters integrationParameters, bool c
             integrationParameters.splitsNumY
     };
 
-    std::vector<std::thread> threads(threadsNum);
-    std::vector<double> partialVolume(threadsNum);
+    for (int i = 0; i < threadsNum; i++) {
+        PartIntegrationParameters integrationParametersThread = partIntegrationParameters;
+        integrationParametersThread.beginX = partIntegrationParameters.beginX + partX * i;
+        integrationParametersThread.endX = partIntegrationParameters.beginX + partX * (i + 1);
+        integrationParametersThread.splitsNumX = threadsSplitsNum[i];
+        std::cout << "beginX | endX -> " << integrationParametersThread.beginX <<  " | " << integrationParametersThread.endX << std::endl;
+        std::cout << "splitsNumX for this part -> " << integrationParametersThread.splitsNumX << std::endl;
+        threads[i] = std::thread(calculatePartIntegral, integrationParametersThread, calcFirstTime, std::ref(partIntegralResults[i]));
+    }
 
-    double volumePart1 = 0, volumePart2 = 0;
-    PartIntegrationParameters integrationParameters1 = partIntegrationParameters;
-    integrationParameters1.beginX = -50;
-    integrationParameters1.endX = 50;
-    integrationParameters1.splitsNumX = threadsSplitsNum[0];
+    for (std::thread & th : threads)
+    {
+        // If thread Object is Joinable then Join that thread.
+        if (th.joinable())
+            th.join();
+    }
 
-
-
-    std::thread thread1 = std::thread(calculatePartIntegral, integrationParameters1, calcFirstTime, std::ref(volumePart1));
-
-
-    thread1.join();
-
-
-
-//    for (int i = 0; i < threadsNum; i++) {
-//        threads[i] = std::thread(calculate_integral, beginX, endX, beginY, endY, splitsNum, std::ref(partialVolume[i]));
-//    }
-
-//    for (std::thread & th : threads)
-//    {
-//        // If thread Object is Joinable then Join that thread.
-//        if (th.joinable())
-//            th.join();
-//    }
-
-//    std::cout << volumePart1 << std::endl;
-//    std::cout << volumePart2 << std::endl;
-
-    // end threads
-
-    double integralVal = volumePart1;
+    // Sum up part integrals
+    double integralVal = 0;
+    for (const auto &n : partIntegralResults)
+        integralVal += n;
 
     return integralVal;
 }

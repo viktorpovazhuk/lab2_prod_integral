@@ -10,12 +10,14 @@
 #include "integration_structures.h"
 #include <algorithm>
 #include <memory>
+#include "errors.h"
 
 #define PRINT_STEPS
 
 using std::vector;
 using std::cout;
 using std::endl;
+using std::cerr;
 
 double deDjongFunc(double x1, double x2) {
     double sum = 0.002;
@@ -30,11 +32,11 @@ double deDjongFunc(double x1, double x2) {
 void
 calculatePartIntegral(PartIntegrationParameters partIntegrationParameters, bool calcFirstTime, double &result) {
     double beginX = partIntegrationParameters.beginX,
-    endX = partIntegrationParameters.endX,
-    beginY = partIntegrationParameters.beginY,
-    endY = partIntegrationParameters.endY;
+            endX = partIntegrationParameters.endX,
+            beginY = partIntegrationParameters.beginY,
+            endY = partIntegrationParameters.endY;
     int splitsNumX = partIntegrationParameters.splitsNumX,
-    splitsNumY = partIntegrationParameters.splitsNumY;
+            splitsNumY = partIntegrationParameters.splitsNumY;
 
     int jStartValue = 0, jIncrement = 1;
     if (!calcFirstTime) {
@@ -66,7 +68,8 @@ calculatePartIntegral(PartIntegrationParameters partIntegrationParameters, bool 
 }
 
 
-double calculateOnceIntegral(IntegrationParameters integrationParameters, bool calcFirstTime, int threadsNum, const vector<int>& threadsSplitsNum) {
+double calculateParallelIntegral(IntegrationParameters integrationParameters, bool calcFirstTime, int threadsNum,
+                                 const vector<int> &threadsSplitsNum) {
     std::vector<std::thread> threads(threadsNum);
     std::vector<double> partIntegralResults(threadsNum);
 
@@ -88,25 +91,42 @@ double calculateOnceIntegral(IntegrationParameters integrationParameters, bool c
         integrationParametersThread.endX = partIntegrationParameters.beginX + partX * (i + 1);
         integrationParametersThread.splitsNumX = threadsSplitsNum[i];
 #ifdef PRINT_STEPS
-        std::cout << "beginX | endX -> " << integrationParametersThread.beginX <<  " | " << integrationParametersThread.endX << std::endl;
+        std::cout << "beginX | endX -> " << integrationParametersThread.beginX << " | "
+                  << integrationParametersThread.endX << std::endl;
         std::cout << "splitsNumX for this part -> " << integrationParametersThread.splitsNumX << std::endl;
 
 #endif
-        threads[i] = std::thread(calculatePartIntegral, integrationParametersThread, calcFirstTime, std::ref(partIntegralResults[i]));
+        threads[i] = std::thread(calculatePartIntegral, integrationParametersThread, calcFirstTime,
+                                 std::ref(partIntegralResults[i]));
     }
 #ifdef PRINT_STEPS
     cout << "------------------------" << std::endl;
 #endif
 
-    for (std::thread & th : threads)
-    {
+    for (std::thread &th: threads) {
         if (th.joinable())
             th.join();
     }
 
     double integralVal = 0;
-    for (const auto &n : partIntegralResults)
+    for (const auto &n: partIntegralResults)
         integralVal += n;
+
+    return integralVal;
+}
+
+double calculateSerialIntegral(IntegrationParameters integrationParameters, bool calcFirstTime) {
+    PartIntegrationParameters partIntegrationParameters{
+            integrationParameters.beginX,
+            integrationParameters.endX,
+            integrationParameters.beginY,
+            integrationParameters.endY,
+            integrationParameters.splitsNumX,
+            integrationParameters.splitsNumY
+    };
+
+    double integralVal = 0;
+    calculatePartIntegral(partIntegrationParameters, calcFirstTime, integralVal);
 
     return integralVal;
 }
@@ -120,65 +140,107 @@ vector<int> calculateThreadsSplitsNum(int splitsNum, int threadsNum) {
     return threadsSplitsNum;
 }
 
-IntegrationResult calculatePreciseIntegral(IntegrationParameters integrationParameters, int threadsNum) {
-    vector<int> threadsSplitsNum = calculateThreadsSplitsNum(integrationParameters.splitsNumX, threadsNum);
+IntegrationResult
+calculatePreciseIntegral(IntegrationParameters integrationParameters, int threadsNum, int maxNumIterations) {
+    vector<int> threadsSplitsNum;
+    double previousIntegralVal = 0, newIntegralVal = 0;
 
     bool calcFirstTime = true;
-    double previousIntegralVal = calculateOnceIntegral(integrationParameters, calcFirstTime, threadsNum, threadsSplitsNum),
-            newIntegralVal = 0;
+    if (threadsNum > 0) {
+        threadsSplitsNum = calculateThreadsSplitsNum(integrationParameters.splitsNumX, threadsNum);
+        previousIntegralVal = calculateParallelIntegral(integrationParameters, calcFirstTime, threadsNum,
+                                                        threadsSplitsNum);
+    } else {
+        previousIntegralVal = calculateSerialIntegral(integrationParameters, calcFirstTime);
+    }
     calcFirstTime = false;
 
+    int numIterations = 1;
     double absError = 99999, relError = 99999;
-    while (absError > integrationParameters.absEps and relError > integrationParameters.relEps) {
-        for (auto& threadSplitsNum: threadsSplitsNum) {
-            threadSplitsNum *= 2;
-        }
+    while (absError > integrationParameters.absEps and relError > integrationParameters.relEps and
+           numIterations < maxNumIterations) {
         integrationParameters.splitsNumY *= 2;
 
-        newIntegralVal = previousIntegralVal / 4 +
-                calculateOnceIntegral(integrationParameters, calcFirstTime, threadsNum, threadsSplitsNum);
+        if (threadsNum > 0) {
+            for (auto &threadSplitsNum: threadsSplitsNum) {
+                threadSplitsNum *= 2;
+            }
+            newIntegralVal = previousIntegralVal / 4 +
+                             calculateParallelIntegral(integrationParameters, calcFirstTime, threadsNum,
+                                                       threadsSplitsNum);
+        } else {
+            integrationParameters.splitsNumX *= 2;
+            newIntegralVal = previousIntegralVal / 4 +
+                             calculateSerialIntegral(integrationParameters, calcFirstTime);
+        }
 
         absError = std::abs(newIntegralVal - previousIntegralVal);
         relError = std::abs(newIntegralVal - previousIntegralVal) / newIntegralVal;
 #ifdef PRINT_STEPS
-        std::cout << "splits num: " << (integrationParameters.splitsNumX *= 2) << " | " << integrationParameters.splitsNumY << '\n'
+        std::cout << "splits num: " << integrationParameters.splitsNumX << " | "
+                  << integrationParameters.splitsNumY << '\n'
                   << "abs error: " << absError << '\n'
                   << "rel error: " << relError << '\n'
                   << "------------------------" << std::endl;
 #endif
         previousIntegralVal = newIntegralVal;
+
+        numIterations++;
+    }
+
+    // TODO: is it correct?
+    if (maxNumIterations == numIterations and absError > integrationParameters.absEps and
+        relError > integrationParameters.relEps) {
+        cerr << "Exceeded max number of iterations";
+        exit(Errors::NOT_ENOUGH_ITER);
     }
 
     return IntegrationResult{newIntegralVal, absError, relError};
 }
 
 int main(int argc, char *argv[]) {
+    if (argc < 2) {
+        cerr << "Incorrect number of console arguments" << endl;
+        return Errors::INCOR_ARGS_NUM;
+    }
+
     std::unique_ptr<command_line_options_t> command_line_options;
     try {
         command_line_options = std::make_unique<command_line_options_t>(argc, argv);
     }
     catch (std::exception &ex) {
-        cout << ex.what() << endl;
-        return 1;
+        cerr << ex.what() << endl;
+        return Errors::OPTIONS_PARSER;
+    }
+
+    std::unique_ptr<config_file_options_t> config_file_options;
+    try {
+        config_file_options = std::make_unique<config_file_options_t>(command_line_options->config_file);
+    }
+    catch (OpenConfigFileException &ex) {
+        cerr << ex.what() << endl;
+        return Errors::OPEN_CFG_FILE;
+    } catch (std::exception &ex) {
+        cerr << ex.what() << endl;
+        return Errors::READ_CFG_FILE;
     }
 
     IntegrationParameters integrationParameters{
-        command_line_options->x_start,
-        command_line_options->x_end,
-        command_line_options->y_start,
-        command_line_options->y_end,
-        command_line_options->init_steps_x,
-        command_line_options->init_steps_y,
-        command_line_options->abs_err,
-        command_line_options->rel_err
+            config_file_options->x_start,
+            config_file_options->x_end,
+            config_file_options->y_start,
+            config_file_options->y_end,
+            config_file_options->init_steps_x,
+            config_file_options->init_steps_y,
+            config_file_options->abs_err,
+            config_file_options->rel_err
     };
-    int threadsNum = command_line_options->n_threads;
-
-    cout << threadsNum << endl;
+    int threadsNum = config_file_options->n_threads,
+            maxNumIterations = config_file_options->max_iter;
 
     auto time_start = get_current_time_fenced();
 
-    IntegrationResult integrationResult = calculatePreciseIntegral(integrationParameters, threadsNum);
+    IntegrationResult integrationResult = calculatePreciseIntegral(integrationParameters, threadsNum, maxNumIterations);
 
     auto time_finish = get_current_time_fenced();
 

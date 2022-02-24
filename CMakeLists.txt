@@ -65,7 +65,8 @@ include(cmake/CompilerWarnings.cmake)
 #! Project main executable source compilation
 add_executable(${PROJECT_NAME} src/parallel.cpp
         src/options_parser.cpp src/options_parser.h
-        src/methods.h src/integration_structures.h)
+        src/methods.h src/integration_structures.h
+        src/errors.h)
 
 add_executable(${ONE_THREAD_EXE} src/serial.cpp
         src/options_parser.cpp src/options_parser.h

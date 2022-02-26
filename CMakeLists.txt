@@ -102,7 +102,7 @@ INSTALL(PROGRAMS
         DESTINATION bin)
 
 # Define ALL_TARGETS variable to use in PVS and Sanitizers
-set(ALL_TARGETS ${PROJECT_NAME} ${TEST_EXECUTABLE})
+set(ALL_TARGETS ${PROJECT_NAME})
 
 # Include CMake setup
 include(cmake/main-config.cmake)

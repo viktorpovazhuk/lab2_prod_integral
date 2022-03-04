@@ -20,18 +20,6 @@ command_line_options_t::command_line_options_t() {
              "File with configuration");
 
     positional_opt.add("config_file", 1);
-
-    file_opt.add_options()
-            ("abs_err", po::value<double>(), "Absolute error")
-            ("rel_err", po::value<double>(), "Relative error")
-            ("n_threads", po::value<int>(), "Number of threads")
-            ("x_start", po::value<double>(), "Start x")
-            ("x_end", po::value<double>(), "End x")
-            ("y_start", po::value<double>(), "Start y")
-            ("y_end", po::value<double>(), "End y")
-            ("init_steps_x", po::value<int>(), "Init steps x")
-            ("init_steps_y", po::value<int>(), "Init steps y")
-            ("max_iter", po::value<int>(), "Max iterations");
 }
 
 command_line_options_t::command_line_options_t(int ac, char **av) :
@@ -47,18 +35,49 @@ void command_line_options_t::parse(int ac, char **av) {
                 .positional(positional_opt)
                 .run();
         po::store(parsed, var_map);
-
-        if (var_map.count("config_file")) {
-            std::ifstream ifs{var_map["config_file"].as<std::string>().c_str()};
-            if (ifs)
-                store(parse_config_file(ifs, file_opt), var_map);
-        }
         notify(var_map);
 
         if (var_map.count("help")) {
             std::cout << general_opt << "\n";
             exit(EXIT_SUCCESS);
         }
+
+        config_file = var_map["config_file"].as<string>();
+    } catch (std::exception &ex) {
+        throw OptionsParseException(ex.what()); // Convert to our error type
+    }
+}
+
+config_file_options_t::config_file_options_t() {
+    general_opt.add_options()
+            ("abs_err", po::value<double>(), "Absolute error")
+            ("rel_err", po::value<double>(), "Relative error")
+            ("n_threads", po::value<int>(), "Number of threads")
+            ("x_start", po::value<double>(), "Start x")
+            ("x_end", po::value<double>(), "End x")
+            ("y_start", po::value<double>(), "Start y")
+            ("y_end", po::value<double>(), "End y")
+            ("init_steps_x", po::value<int>(), "Init steps x")
+            ("init_steps_y", po::value<int>(), "Init steps y")
+            ("max_iter", po::value<int>(), "Max iterations");
+}
+
+config_file_options_t::config_file_options_t(const string& config_file) :
+        config_file_options_t() // Delegate constructor
+{
+    parse(config_file);
+}
+
+void config_file_options_t::parse(const string& config_file) {
+    try {
+        std::ifstream ifs{config_file.c_str()};
+        if (ifs) {
+            po::store(parse_config_file(ifs, general_opt), var_map);
+        }
+        else {
+            throw OpenConfigFileException("Can't open config file");
+        }
+        notify(var_map);
 
         abs_err = var_map["abs_err"].as<double>();
         rel_err = var_map["rel_err"].as<double>();
@@ -70,8 +89,8 @@ void command_line_options_t::parse(int ac, char **av) {
         init_steps_x = var_map["init_steps_x"].as<int>();
         init_steps_y = var_map["init_steps_y"].as<int>();
         max_iter = var_map["max_iter"].as<int>();
-
-
+    } catch (OpenConfigFileException &ex) {
+        throw OpenConfigFileException(ex.what()); // Convert to our error type
     } catch (std::exception &ex) {
         throw OptionsParseException(ex.what()); // Convert to our error type
     }

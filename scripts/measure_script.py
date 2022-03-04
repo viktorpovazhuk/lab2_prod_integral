@@ -25,6 +25,10 @@ for i in range(int(times)):
     stderr = str(errors)[2:-3]
     stdout = str(output)[2:-3]
 
+    if stderr != "":
+        print(stderr)
+        exit()
+
     variant = int(stdout.split("\\n")[0])
     integral_res, abs_err, rel_err, time = list(map(float, stdout.split("\\n")[1:]))
 

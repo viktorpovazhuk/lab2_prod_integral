@@ -50,12 +50,13 @@ for i in range(int(times)):
         min_time = min(min_time, time)
 
     # Progress tracking part
-    if i % 10 == 0:
-        print(i, end="\r", flush=True)
+    # if i % 10 == 0:
+        # print(i, end="\r", flush=True)
 
     # print(variant, integral_res, abs_err, rel_err, time)
 
-print(min_time)
+# Cast time to integer as in executable output
+print(int(min_time))
 
 if same_results:
     print("All results are the same.")

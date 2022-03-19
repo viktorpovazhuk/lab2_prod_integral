@@ -1,44 +1,65 @@
-<mark>Template for your README. Remove all unused parts and instructions</mark>
-
-# Lab work <mark>NUMBER</mark>: <mark>SHORT TOPIC</mark>
-Authors (team): <mark>AUTHORS WITH GITHUB LINKS</mark><br>
-Variant: <mark>VARIANT SHOULD BE HERE</mark>
+# Lab work 2: Paraller integral calculation
+Authors (team): [Viktor Povazhuk](https://github.com/viktorpovazhuk), [Bohdan Mykhailiv](https://github.com/bmykhaylivvv)    
+Variant: 1
 ## Prerequisites
 
-<mark>LIST LIBRARIES/TOOLS/OTHER UTILITIES THAT NEED TO BE INSTALLED (E.G. GCC, OPENMP, CMAKE ETC)</mark>
+To compile .cpp file you should have compiler (e.g. g++) and cmake for compiling project.
 
 ### Compilation
 
-<mark>HOW TO COMPILE YOUR PROGRAM? (RECOMMENDED: ./comile.sh)</mark>
+Project can be compiled just by running fr ```./compile.sh``` or ```./compile.sh -O``` for compilation with optimization from root directory of project.
 
 ### Installation
 
-<mark>DESCRIBE THE INSTALLATION PROCESS (USE ./dependencies FOLDER)</mark>
-
-<mark>Note: For Python scripts, You must add `requirenments.txt` 
-file and add your env to the `.gitignore` file!</mark>
+There is no need to install any additional dependencies as all modules, used in python script, is installed in Python standart library.
 
 ### Usage
 
-<mark>PROVIDE AN EXAMPLE OF HOW TO RUN YOUR PROGRAM (IT CAN BE A_flag COMMAND LINE WITH INPUT AND EXPECTED OUTPUT)</mark>
+**Step 1:** Run ```./compile.sh -O``` in your ROOT directory  
+**Step 2:** Execute compile file in /bin directory by running ```./integrate_task_1 arg```  
+- *arg* - path to configurations file  
 
-<mark>Note: if your project needs or generates any data, media and so on -- put them
-into the data folder</mark> 
+Output:
+e.g.<br />
+```
+1
+4545447.66
+0.023079142
+5.07741893e-09
+100878
+```
+where
+```
+1 -- variant
+4545447.66 -- calculation result
+0.023079142 -- absolute error
+5.07741893e-09 -- relative error
+100878 -- calculation time (microseconds)
+```
 
+OR
+
+You can run python script which run calculations multiple number of times.  
+**Step 1:** Run ```./compile.sh -O``` in your ROOT directory  
+**Step 2:** Move to ```/scripts``` directory  
+**Step 3:** ```python measure_script.py arg1 arg2```  
+- *arg1* - number of times to repeat experiments  
+- *arg2* - path to configurations file  
+
+Output: the smallest time among experiment which were run.
+e.g.<br />
+```
+53336340
+```
 ### Important!
 
-<mark>WHAT ELSE SHOULD WE KNOW ABOUT YOUR WORK? (E.G. KNOWN ISSUES, BUGS, SPECIAL BEHAVIOR ETC)</mark>
+Note that scripts are path-sensetive.  
+Configurations file you can find in ```/configs``` folder.
 
 ### Results
+On the chart below you can see relation between number of threads and time of calculation.  
+TO DO: Change this chart to real one
+<img src="./assets/chart.png" alt="Chart image of relation between threads number and time of calculation" width="500"/>
 
-<mark>DESCRIBE THE RESULTS OF THE WORK YOU DID. WHAT DID YOU LEARN OR FIND INTERESTING?</mark>
-
-# Additional tasks
-<mark>IF APPLICABLE, LIST ALL THE EXTRA FEATURES YOU ADDED. PROVIDE DETAILS<mark>
-
-# ATTENTION!
-  
-Additional tasks not listed in the previous paragraph would not be graded.
-
-Be sure to provide a complete list of authors.
-
+We can see that see that calculation time decreases when we increase number of threads. It means that we implemented efficient method for parallel integral calculation.  
+It's important to notice, that, for example, for 3 threads time of calculation is larger than for 2 threads, its due the fact that we get remainder when divide by 3 while calculation integral and it`s more diffilult to reach the desirable error.

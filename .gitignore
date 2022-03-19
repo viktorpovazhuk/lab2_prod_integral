@@ -1,5 +1,6 @@
 data/out.txt
-src/pseudo.cpp
+tests/pseudo.cpp
+venv/
 
 ### C++ ###
 # Prerequisites

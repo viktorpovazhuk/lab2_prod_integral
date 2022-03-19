@@ -1,6 +1,7 @@
 data/out.txt
 tests/pseudo.cpp
 venv/
+manual-build/
 
 ### C++ ###
 # Prerequisites

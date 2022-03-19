@@ -10,9 +10,9 @@ using std::cout;
 using std::endl;
 
 int main(int argc, char *argv[]) {
-    std::unique_ptr<command_line_options_t> command_line_options;
+    std::unique_ptr<config_file_options_t> command_line_options;
     try {
-        command_line_options = std::make_unique<command_line_options_t>(argc, argv);
+        command_line_options = std::make_unique<config_file_options_t>("../configs/config.cfg");
     }
     catch (std::exception &ex) {
         cout << ex.what() << endl;
